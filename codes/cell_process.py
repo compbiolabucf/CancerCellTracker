@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 import cv2
-import copy
 from cell_detect import CellDetector
 from cell_classify import CellClassifier
 import os
-from matplotlib import pyplot as plt
 import numpy as np
-# from phagocytosis_detect import PhagocytosisDetector
-import multiprocessing
 import time
-# import imageio
-from itertools import chain
-from operator import add
-from statistics import mean
 import sys
 import re
 from util import read_frame

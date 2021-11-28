@@ -4,7 +4,6 @@ import time
 import os
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix
-from statistics import mean
 from util import read_frame
 
 debug = 0

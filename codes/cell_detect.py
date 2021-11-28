@@ -2,8 +2,6 @@ import numpy as np
 import cv2
 import time
 import numpy.ma as ma
-import matplotlib.pyplot as plt
-import matplotlib
 import os
 from operator import add
 from statistics import mean
@@ -302,14 +300,6 @@ class CellDetector(object):
             except ZeroDivisionError:
                 pass
 
-        # plt.hist(black_new.flatten(), 256, [0, 256], alpha=0.5, label='Image a')
-        # plt.show()
-
-        # cv2.namedWindow('black_new', cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow('black_new', 900, 900)
-        # cv2.imshow('black_new', black_new)
-        # cv2.waitKey()
-
         if (debug == 1):
             cv2.namedWindow('result', cv2.WINDOW_NORMAL)
             cv2.resizeWindow('result', 900, 900)
@@ -535,14 +525,6 @@ class CellDetector(object):
             except ZeroDivisionError:
                 pass
 
-        # plt.hist(black_new.flatten(), 256, [0, 256], alpha=0.5, label='Image a')
-        # plt.show()
-
-        # cv2.namedWindow('black_new', cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow('black_new', 900, 900)
-        # cv2.imshow('black_new', black_new)
-        # cv2.waitKey()
-
         if (draw == True):
             cv2.putText(frame_draw, str(frame_index), (10*scale, 20*scale), cv2.FONT_HERSHEY_SIMPLEX, 0.6 * scale, (0, 255, 255), int(0.6 * scale))
 
@@ -617,15 +599,6 @@ class CellDetector(object):
         files = [x for y in files_l for x in y]
         # print(files)
 
-        # for frame_count in range(len(files)):
-        #     frame = cv2.imread(path + files[frame_count])#, cv2.IMREAD_GRAYSCALE
-        #     frame = frame[0:1024, 305:1041, :]
-        #     out_image_path = "/home/qibing/Work/ground_truth/preprocess/" + "t" + "{0:0=3d}".format(frame_count) + ".tif"
-        #     cv2.imwrite(out_image_path, frame)
-        #
-        # print("preprocess done")
-        # exit()
-
 
         self.image_amount = min(amount_limit, len(files))
         image_amount_str = str(self.image_amount)
@@ -656,13 +629,6 @@ class CellDetector(object):
                     break
 
 
-            # i = 81
-            # tmp_img = cv2.resize(frame_org, (frame_org.shape[1] , frame_org.shape[0]), interpolation=cv2.INTER_CUBIC)
-            # tmp_image_pad = cv2.copyMakeBorder(tmp_img, i, i, i, i, cv2.BORDER_REFLECT)
-            # bg = cv2.medianBlur(tmp_image_pad, i)  # There is an unexpected effect when ksize is 81, applied to 8 times scaled image.
-            # bg = bg[i:tmp_img.shape[0] + i, i:tmp_img.shape[1] + i]
-
-
 
             bg = cv2.resize(bg, (frame_org.shape[1], frame_org.shape[0]), interpolation=cv2.INTER_CUBIC)
 
@@ -678,12 +644,6 @@ class CellDetector(object):
             frame += 0.5 # rounding
             np.clip(frame, 0, 255, out=frame)
             frame = frame.astype(np.uint8)
-
-            # cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow('frame', 900, 900)
-            # cv2.imshow('frame', frame)
-            # # cv2.imwrite(out_path + 'black.png', black)
-            # cv2.waitKey()
 
 
             out_image_path = prepro_images_path + "t" + "{0:0=3d}".format(frame_count) + ".tif"
@@ -701,15 +661,11 @@ class CellDetector(object):
                 self.background_pixel_mean = frame.mean()
                 self.background_pixel_std = frame.std()
 
-                # hi = plt.hist(frame.flatten(), 256, [0, 256], histtype='step', linewidth=2)
-                # hi = hi[0]
                 hi = cv2.calcHist([frame], [0], None, [256], (0, 256), accumulate=False)
                 hi = hi.flatten()
 
                 self.background_pixel = np.argmax(hi)
 
-                # self.background_pixel_peak = np.argmax(hi[0])
-                # self.background_pixel = self.background_pixel_mean
 
                 x_array = np.arange(256)
                 y_array_2gauss = hi
@@ -722,40 +678,6 @@ class CellDetector(object):
 
                 self.edge_thr = self.background_pixel_mean
                 self.core_thr = self.bg_gau_mean + 3.0 * self.bg_gau_std
-
-                # # plt.figure(0, figsize=(7, 6))
-                # # plt.xticks([]), plt.yticks([])
-                # # plt.imshow(frame, cmap="gray")
-                #
-                # # plt.figure(1, figsize=(7, 6))
-                # # plt.subplots_adjust(left=0.2, bottom=0.1, right=0.95, top=0.95)
-                # # plt.tight_layout()
-                # plt.rcParams.update({'font.size': 16})
-                # # plt.title(str(pt) + "_" + str(Beacon))
-                #
-                # plt.plot(hi, label = "Image Histogram")
-                # # plt.plot(x_array, _1gaussian(x_array, *popt_2gauss), '--', label = "Gaussian Estimation($\mu:$" + "{:.2f}".format(self.bg_gau_mean) + ", " +  "$\sigma:${:.2f}".format(self.bg_gau_std) + ")", linewidth=2, color = (0.7, 0.3, 0.7))
-                # plt.plot(x_array, _1gaussian(x_array, *popt_2gauss), '--', label = "Fitted Gaussian Distribution", linewidth=2, color = (0.7, 0.3, 0.7))
-                # # plt.legend(loc = "best")
-                # plt.legend(loc='best', prop={'size': 16})
-                # # plt.xlim(0, 255)
-                # plt.ylim(0, 160000)
-                # # plt.title(r'$\alpha > \beta$')
-                # # plt.ylim(0, max(200000, hi[0][self.background_pixel]))
-                #
-                # # plt.plot(self.background_pixel, hi[self.background_pixel] + 0.05, 'o')
-                # # plt.text(self.background_pixel, hi[self.background_pixel] + 0.05, "Peak Pixel")
-                # # plt.plot(self.background_pixel, hi[self.background_pixel], 'o')
-                # # plt.text(self.background_pixel + 0.05, hi[self.background_pixel], "Peak_Pixel = " + str(self.background_pixel))
-                #
-                # # print("background_pixel: ", hi[1][self.background_pixel] + 0.05, hi[0][self.background_pixel], self.background_pixel_mean, self.background_pixel_std)
-                # # print("bg_gau_mean, bg_gau_std", self.bg_gau_mean, self.bg_gau_std)
-                #
-                # plt.xlabel("Pixel Value")
-                # plt.ylabel("Num. of Pixels")
-                # plt.tight_layout()
-                # plt.show()
-                # # plt.savefig(out_path + "pixel_hist.png")
 
 
             # if(frame_index == 0):
@@ -849,32 +771,7 @@ class CellDetector(object):
                 cell_r_s = np.array(cell_r_s)
                 max_r = max(cell_r_s[:, 0])
                 bins = int(max_r/0.1)
-                # arr = np.zeros((bins, 2))
 
-                # for i in range(bins):
-                #     arr[i][0] = max_r / bins * i
-
-                # for i in range(len(cell_r_s)):
-                #     # arr[int(cell_r_s[i][0])] += cell_r_s[i][1]
-                #     for j in range(bins):
-                #         if cell_r_s[i][0] <= arr[j][0]:
-                #             arr[j][1] += cell_r_s[i][1]
-                #             break
-
-                # max_loc = np.argmax(arr[:, 1])
-                # self.cell_core_r = arr[max_loc][0]
-                # print("cell_core_r: ", self.cell_core_r, arr[max_loc][1])
-
-                # print(arr[max_loc])
-
-                # cond = np.count_nonzero(cell_r_s[:, 0] < 1)
-                # print("radius < 1: ", cond, len(cell_r_s[:, 0]))
-
-                # plt.figure(1, figsize=(7, 6 * 2))
-                # plt.rcParams.update({'font.size': 16})
-                # plt.subplot(121)
-                # plt.imshow(gray, cmap="gray")
-                # plt.xticks([]), plt.yticks([])
 
                 #****** hist of num ********#
 
@@ -909,7 +806,6 @@ class CellDetector(object):
 
 
                 gg_init = models.Gaussian1D(p0_guess[0], p0_guess[1], p0_guess[2]) + models.Gaussian1D(p0_guess[3], p0_guess[4], p0_guess[5])
-                # plt.plot(x_array, gg_init(x_array))
                 fitter = fitting.LevMarLSQFitter()
                 gg_fit = fitter(gg_init, x_array, y_array_2gauss)
 
@@ -926,40 +822,6 @@ class CellDetector(object):
                 overlap_1 = [min(y_array_2gauss[i], g1_tmp[i]) for i in range(len(x_array)) if x_array[i] >= 0.5]
                 overlap_1_sum = sum(overlap_1)
                 # print(y_array_2gauss, g1_tmp, overlap_1, overlap_1_sum)
-
-
-                # # plt.subplot(122)
-                # # hist_data = plt.hist(cell_r_s[:, 0], bins, [0, max_r], alpha=0.5)
-                # plt.plot(x_array, y_array_2gauss, label = "White Points Radii Histogram")
-                # # plt.plot(x_array, gg_fit(x_array), label = ["{:.2f}".format(a) for a in gg_fit.parameters])
-                # # g0 = models.Gaussian1D(*(gg_fit.parameters[0:3]))
-                # # g1 = models.Gaussian1D(*(gg_fit.parameters[3:6]))
-                # x_plot = np.arange(0, 10, 0.01)
-                # # plt.plot(x_plot, g0(x_plot), label = "Gaussian Estimation 1" + str((gg_fit.parameters[0:3])))
-                # # plt.plot(x_plot, g1(x_plot), label = "Gaussian Estimation 2" + str((gg_fit.parameters[3:6])))
-                # # plt.plot(x_plot, g0(x_plot), label = str((gg_fit.parameters[0:3])))
-                # # plt.plot(x_plot, g1(x_plot), label = str((gg_fit.parameters[3:6])))
-                # #
-                # # plt.plot(x_plot, g0(x_plot), label = "Gaussian Estimation 1($\mu_r:$" + "{:.2f}".format(gg_fit.parameters[1]) + ", " +  "$\sigma_r:${:.2f}".format(gg_fit.parameters[2]) + ")")
-                # # plt.plot(x_plot, g1(x_plot), label = "Gaussian Estimation 2($\mu_r:$" + "{:.2f}".format(gg_fit.parameters[4]) + ", " +  "$\sigma_r:${:.2f}".format(gg_fit.parameters[5]) + ")")
-                # plt.plot(x_plot, g0(x_plot), label = "Fitted Gaussian Distribution 1")
-                # plt.plot(x_plot, g1(x_plot), label = "Fitted Gaussian Distribution 2")
-                #
-                #
-                # # $\mu:$" + "{:.2f}".format(self.bg_gau_mean) + ", " +  "$\sigma:${:.2f}".format(self.bg_gau_std) + ")"
-                #
-                # # plt.plot(x_array, gg_init(x_array))
-                #
-                # # plt.text(0.0, 0.0, ["{:.2f}".format(a) for a in gg_fit.parameters], size = 10)
-                # plt.xlim(0,7)
-                # # plt.ylim(0,600)
-                # plt.ylim(0,)
-                # plt.xlabel("Radiuses of White Points")
-                # plt.ylabel("Num. of White Points")
-                # plt.legend(loc='best', prop={'size': 16})#fontsize=20
-                # plt.savefig(out_path + "fit_2_peaks.png")
-                # plt.show()
-                # # # exit()
 
 
                 if(np.count_nonzero(gg_fit.parameters[3:6] > 0) == 3 and overlap_1_sum > overlap_0_sum):
