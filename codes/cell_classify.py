@@ -829,6 +829,520 @@ class CellClassifier(object):
                         print(np.nan, np.nan, np.nan, np.nan, np.nan, sep=',', file=f_cell_tracks)
         f_cell_tracks.close()
 
+    #The version 8 is to prepare data for moffitt
+    def analyse_classification_8_win(self, outpath, frame_count, gt_video_path, scale, Beacon, gt = False):
+        # print("tracker save.")
+        self.image_amount = frame_count
+
+        loc = loc_area = self.image_amount
+
+        # make it comment
+        file3 = None
+        file3 = open(outpath + "Cell_tracks/file3_" + str(Beacon) + ".txt", "w")
+
+        file = None
+        file = open(outpath + "Cell_tracks/Beacon_" + str(Beacon) + "_tracks_death_log" + ".txt", "w")
+        file.write("track_id, image_index, cell_diff, area, cell_death\n")
+
+        live_dead_table = np.zeros((self.image_amount, 4))
+        # live_dead_table = np.zeros((self.image_amount, 4), dtype=int)
+
+        # I once tried to keep those short tracks to make the ctrl viability more flat. However,
+        for tracks in (self.tracks, self.del_tracks):
+            count_tmp = 0
+            i = 0
+            while (i < len(tracks)):
+                count_tmp += 1
+                if np.count_nonzero(tracks[i].coordinates > 0) < 20:
+                    tracks.remove(tracks[i])
+                else:
+                    i += 1
+            # print(count_tmp, len(tracks))
+
+
+        diff_thr = 212.7 * self.cell_core_r_mean * self.cell_core_r_mean * self.background_pixel
+        area_thr = 4.42 * self.cell_core_r_mean * self.cell_core_r_mean
+
+        diff_thr = diff_thr * 6
+        area_thr = area_thr * 2
+
+        win_r = 10
+
+        # print("diff_thr, area_thr: ", self.cell_core_r, self.background_pixel, diff_thr, area_thr)
+        for tracks in (self.tracks, self.del_tracks):
+            for tra_i in range(0, len(tracks), 1):
+
+                # if(np.count_nonzero(tracks[tra_i].coordinates > 0) < 38):
+                #     del tracks[tra_i]
+
+                if (file):
+                    track_mat = np.zeros((self.image_amount, 5), dtype = float)
+                    track_mat[:,0] = tracks[tra_i].track_id
+                    track_mat[:,1] = np.arange(self.image_amount)
+                    track_mat[:,2] = tracks[tra_i].cell_diff[:self.image_amount]
+
+                if(file3):
+                    file3.write("track: %d;\n" % tracks[tra_i].track_id)
+                    file3.write("cell_diff, ")
+                    for j in range(self.image_amount):
+                        file3.write("%s, " % tracks[tra_i].cell_diff[j])
+                    file3.write(";\n")
+
+
+                cell_diff_row = tracks[tra_i].cell_diff.copy()
+
+                tmp = np.where(cell_diff_row[:] > diff_thr)
+
+                if (np.count_nonzero(cell_diff_row > 0) < 20):
+                    if (len(tmp[0]) == 0):
+                        loc = 0
+                    else:
+                        loc = loc_area = self.image_amount
+                else:
+                    #################################################################### start
+
+                    max_l = np.zeros_like(cell_diff_row)
+                    min_l = np.zeros_like(cell_diff_row)
+
+                    if (len(tmp[0]) == 0):
+                        loc = 0
+                    else:
+                        for i in range(win_r, self.image_amount - win_r):
+                            max_l[i] = np.nanmax(cell_diff_row[i - win_r:i + win_r])
+                            min_l[i] = np.nanmin(cell_diff_row[i - win_r:i + win_r])
+
+                        diff_l = max_l - min_l
+                        indices = np.where(diff_l > diff_thr)[0]
+                        # diff_l = np.nan_to_num(diff_l, nan=0.0)
+                        if (len(indices) > 0):
+                            loc = indices[-1]
+                        else:
+                            loc = 0
+
+                    #################################################################### end
+                    pass
+
+
+                    if (file):
+                        track_mat[:,3] = tracks[tra_i].area[:self.image_amount]
+
+                    if (file3):
+                        file3.write("cell_diff_max, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % max_l[j])
+                        file3.write(";\n")
+
+                        file3.write("cell_diff_min, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % min_l[j])
+                        file3.write(";\n")
+
+                        file3.write("%s, " % loc)
+                        file3.write(";\n")
+
+                        file3.write("area, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % tracks[tra_i].area[j])
+                        file3.write(";\n")
+
+
+                    #################################################################### start
+                    area_diff = np.zeros(self.image_amount)
+                    # area_diff[1:] = np.abs(np.diff(np_1[tra_i]))
+                    area_diff[1:] = np.abs(np.diff(tracks[tra_i].area[:self.image_amount]))
+
+                    if (file3):
+                        file3.write("area_diff, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % area_diff[j])
+                        file3.write(";\n")
+
+
+                    tmp = np.where(area_diff[:] > area_thr)
+                    max_l = np.zeros_like(area_diff)
+                    min_l = np.zeros_like(area_diff)
+                    if (len(tmp[0]) == 0):
+                        loc_area = 0
+                    else:
+                        for i in range(win_r, self.image_amount - win_r):
+                            max_l[i] = np.nanmax(area_diff[i - win_r:i + win_r])
+                            min_l[i] = np.nanmin(area_diff[i - win_r:i + win_r])
+
+                        diff_l = max_l - min_l
+                        indices = np.where(diff_l > area_thr)[0]
+                        # diff_l = np.nan_to_num(diff_l, nan=0.0)
+                        if (len(indices) > 0):
+                            loc_area = indices[-1]
+                        else:
+                            loc_area = 0
+
+                    #################################################################### end
+                    loc = min(loc, loc_area)
+
+
+                    if (file3):
+                        file3.write("area_diff_max, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % max_l[j])
+                        file3.write(";\n")
+
+                        file3.write("area_diff_min, ")
+                        for j in range(self.image_amount):
+                            file3.write("%s, " % min_l[j])
+                        file3.write(";\n")
+
+                        file3.write("%s, " % loc_area)
+                        file3.write(";\n")
+
+                one_track = np.zeros(self.image_amount)
+                if (0 < loc < (self.image_amount)):
+                    one_track[:loc] = 1
+                    one_track[loc:] = 0
+                elif (loc >= (self.image_amount)):
+                    one_track[:] = 1
+                else:
+                    one_track[:] = 0
+
+
+                #
+                #
+                # #################################################################### start
+                # cell_diff_row = tracks[tra_i].cell_diff.copy()
+                # diff_mm = np.zeros_like(cell_diff_row)
+                # diff_mm_der = np.zeros_like(cell_diff_row)
+                #
+                # tmp = np.where(cell_diff_row[:] > 3 * diff_thr)
+                # if (len(tmp[0]) == 0):
+                #     loc = 0
+                # else:
+                #
+                #     max_v = np.nan
+                #     min_v = np.nan
+                #     diff_mm[:] = np.nan
+                #     diff_mm_der[:] = np.nan
+                #     for i in range(self.image_amount - 1, -1, -1):
+                #         if (cell_diff_row[i] > 0):
+                #             if (np.isnan(max_v) or cell_diff_row[i] > max_v):
+                #                 max_v = cell_diff_row[i]
+                #
+                #             if (np.isnan(min_v) or cell_diff_row[i] < min_v):
+                #                 min_v = cell_diff_row[i]
+                #
+                #             diff_mm[i] = max_v - min_v
+                #
+                #     diff_mm_der[1:] = np.abs(np.diff(diff_mm))
+                #     loc = np.nan
+                #     try:
+                #         loc = np.nanargmax(diff_mm_der)
+                #     except ValueError as e:
+                #         if (e.args[0] == 'All-NaN slice encountered'):
+                #             pass
+                #         else:
+                #             print("Qibing error: ", e)
+                #             exit()
+                #
+                # #################################################################### end
+                #
+                #
+                # if (file):
+                #     track_mat[:,3] = diff_mm[:self.image_amount]
+                #     track_mat[:,4] = diff_mm_der[:self.image_amount]
+                #     track_mat[:,5] =tracks[tra_i].area[:self.image_amount]
+                #
+                # area_diff = np.zeros(array_size)
+                # area_diff[1:] = np.abs(np.diff(tracks[tra_i].area))
+                # area_diff_mm = np.zeros_like(area_diff)
+                # area_diff_mm[:] = np.nan
+                # area_diff_mm_der = np.zeros_like(area_diff)
+                # area_diff_mm_der[:] = np.nan
+                #
+                # if (file):
+                #     track_mat[:,6] = area_diff[:self.image_amount]
+                #
+                #
+                # #################################################################### start
+                # tmp = np.where(area_diff[:] > 3 * area_thr)
+                # if (len(tmp[0]) == 0):
+                #     loc_area = 0
+                # else:
+                #     max_v = np.nan
+                #     min_v = np.nan
+                #     for i in range(self.image_amount - 1, -1, -1):
+                #         if (area_diff[i] > 0):
+                #             if (np.isnan(max_v) or area_diff[i] > max_v):
+                #                 max_v = area_diff[i]
+                #
+                #             if (np.isnan(min_v) or area_diff[i] < min_v):
+                #                 min_v = area_diff[i]
+                #
+                #             area_diff_mm[i] = max_v - min_v
+                #
+                #     area_diff_mm_der[1:] = np.abs(np.diff(area_diff_mm))
+                #     loc_area = np.nan
+                #     try:
+                #         loc_area = np.nanargmax(area_diff_mm_der)
+                #     except ValueError as e:
+                #         if (e.args[0] == 'All-NaN slice encountered'):
+                #             pass
+                #         else:
+                #             print("error: ", e)
+                #             exit()
+                #
+                # if (loc_area < loc):
+                #     loc = loc_area
+                #
+                # #################################################################### end
+                #
+                # if (file):
+                #     track_mat[:,7] = area_diff_mm[:self.image_amount]
+                #     track_mat[:,8] = area_diff_mm_der[:self.image_amount]
+                #
+                #
+                # one_track = np.zeros(array_size)
+                # if (0 < loc < (self.image_amount)):
+                #     one_track[:loc] = 1
+                #     one_track[loc:] = 0
+                # elif (loc > (self.image_amount)):
+                #     one_track[:] = 1
+                # else:
+                #     one_track[:] = 0
+                #
+                # if (file):
+                #     track_mat[:,9] = one_track[:self.image_amount]
+
+                # [print(*tra_e, sep = ',', file = file) for tra_e in track_mat]
+                # tracks[tra_i].live_state = one_track * 2  # just covert 1 to 2
+
+                if (file):
+                    track_mat[:,4] = one_track[:self.image_amount]
+
+                if (file3):
+                    file3.write("final, ")
+                    for s in range(self.image_amount):
+                        file3.write("%s, " % one_track[s])
+                    file3.write(";\n")
+
+                if (file):
+                    [print(*tra_e, sep=',', file=file) for tra_e in track_mat]
+                tracks[tra_i].live_state = one_track * 2  # just covert 1 to 2
+
+        if (file):
+            file.close()
+
+        if (file3):
+            file3.close()
+
+
+        live_area = np.zeros(self.image_amount)
+        # tmp_live_dead_table = np.zeros(self.image_amount)
+        for tracks in (self.tracks, self.del_tracks):
+            for i in range(0, len(tracks), 1):
+                y = tracks[i].area
+
+                sub_y_idx = np.where(y > 0)[0]
+                y_p = y[sub_y_idx]
+                x = np.arange(sub_y_idx[0], sub_y_idx[-1], 1)
+                part_new_y = np.interp(x, sub_y_idx, y_p)
+                new_y = y.copy()
+                new_y[sub_y_idx[0]:sub_y_idx[-1]] = part_new_y
+
+                tracks[i].area = new_y
+                for j in range(self.image_amount):
+                    if (tracks[i].live_state[j] > 1):
+                        if (tracks[i].area[j] > 0):
+                            live_area[j] += tracks[i].area[j]
+                            # live_area[j] += new_y[j]
+                    else:
+                        break
+
+        for j in range(0, self.image_amount):
+            for tracks in (self.tracks, self.del_tracks):
+                for i in range(0, len(tracks), 1):
+                    cell_x = tracks[i].coordinates[j][0]
+                    cell_y = tracks[i].coordinates[j][1]
+
+                    if (cell_x > 0 and cell_y > 0):
+
+                        if (tracks[i].live_state[j] > 1):
+                            live_dead_table[j][0] = live_dead_table[j][0] + 1
+                            live_dead_table[j][2] = live_dead_table[j][2] + tracks[i].area[j]
+                        else:
+                            live_dead_table[j][1] = live_dead_table[j][1] + 1
+                            live_dead_table[j][3] = live_dead_table[j][3] + tracks[i].area[j]
+
+                # live_dead_table[j][2] = live_dead_table[j][0] + live_dead_table[j][1]
+
+        if (not os.path.exists(outpath)):
+            os.makedirs(outpath)
+
+        np.savetxt(outpath + "Cell_tracks/Beacon_" + str(Beacon) + "_live_dead_table.txt", live_dead_table, fmt='%d')  # , fmt='%d'
+
+
+        with open(outpath + "Results/Results_" + "{0:0=3d}".format(Beacon) + ".csv", 'w') as f:
+            f.write("Beacon-" + "{0:0=3d}".format(Beacon) + ',')
+            print(*live_area, sep=',', file=f)#It is the padded area
+
+        if (gt == True and os.path.exists(gt_video_path)):
+            # if(gt == True and os.path.exists(gt_video_path)):
+            vid = cv2.VideoCapture(gt_video_path)
+            # skip = 3
+            skip = frame_count - int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+            print("skip2: ", skip)
+
+            pad_wid = 200
+            for i in range(0, self.image_amount):
+                if (i >= skip):
+                    ret, gt_frame = vid.read()
+
+                    if not ret:
+                        break
+
+                    # if(os.path.exists(outpath + "coord.txt")):# False and
+                    #     if(self.coord[0] == np.nan):
+                    #         self.coord = np.loadtxt(outpath + "coord.txt")
+                    #     coord = self.coord[i * 2: i * 2 + 2]
+                    #     coord = coord.astype(int)
+                    # else:
+                    image_path = outpath + "images_ucf/Beacon_" + str(Beacon) + "/t" + "{0:0=3d}".format(i) + ".tif"
+                    # image_path = outpath + "input_images/" + "t" + "{0:0=3d}".format(i) + ".tif"
+                    if (not os.path.exists(image_path)):
+                        # print("file not exist: ", image_path)
+                        break
+                    else:
+                        # print(frame_count, image_path)
+                        pass
+
+                    frame = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+                    # d0 = frame.shape[0] >> 2
+                    # d1 = frame.shape[1] >> 2
+                    # template = gt_frame[d0:3 * d0, d1:3 * d1, 0]
+
+                    d0 = frame.shape[0] >> 3
+                    d1 = frame.shape[1] >> 3
+                    template = gt_frame[d0:7 * d0, d1:7 * d1, 0]
+
+                    ret = cv2.matchTemplate(frame, template, cv2.TM_SQDIFF)
+                    resu = cv2.minMaxLoc(ret)
+
+                    coord = [resu[2][1] - d0, resu[2][0] - d1]
+                    coord = -np.array(coord)
+                    # print(coord)
+                    self.coord[i * 2] = coord[0]
+                    self.coord[i * 2 + 1] = coord[1]
+                    # else end
+
+                    gt_frame_pad = cv2.copyMakeBorder(gt_frame, pad_wid, pad_wid, pad_wid, pad_wid,
+                                                      cv2.BORDER_CONSTANT)
+                    gt_frame = gt_frame_pad[
+                               pad_wid + coord[0]:pad_wid + coord[0] + gt_frame.shape[0],
+                               pad_wid + coord[1]:pad_wid + coord[1] + gt_frame.shape[1]]
+
+                    # cv2.imshow("gt_frame", gt_frame)
+                    # cv2.waitKey()
+
+                    # frame_0 = frame[:, :, 0]
+                    frame_1 = gt_frame[:, :, 1]
+                    frame_2 = gt_frame[:, :, 2]
+
+                    red = frame_2.astype(np.float) - frame_1.astype(np.float)
+                    red_uint8 = np.clip(red, 0, 255).astype(np.uint8)
+
+                    for tracks in (self.tracks, self.del_tracks):
+                        for idx in range(len(tracks)):
+                            x3 = tracks[idx].coordinates[i][0]
+                            y3 = tracks[idx].coordinates[i][1]
+
+                            if (np.isnan(x3) or np.isnan(y3)):
+                                tracks[idx].g_truth[i] = np.nan
+                            else:
+                                if (red_uint8[int(y3)][int(x3)] > red_level):
+                                    tracks[idx].g_truth[i] = 1
+                                    tracks[idx].g_truth_t = i + 1
+                                else:
+                                    tracks[idx].g_truth[i] = -1
+                    # print("Hello")
+
+            # if ((not os.path.exists(outpath + "coord.txt")) and self.coord[0] != np.nan):
+            # if (self.coord[0] != np.nan):
+            np.savetxt(outpath + "info_ucf/Beacon_" + str(Beacon) + "_coord.txt", self.coord)
+
+            f_g_truth = open(outpath + "info_ucf/Beacon_" + str(Beacon) + "_g_truth.txt", 'w')
+            f_die_time = open(outpath + "info_ucf/Beacon_" + str(Beacon) + "_die_time.txt", 'w')
+            # f_g_truth = open(outpath + "g_truth" + time.strftime("%d_%H_%M", time.localtime()) + ".txt", 'w')
+            # f_die_time = open(outpath + "die_time" + time.strftime("%d_%H_%M", time.localtime()) + ".txt", 'w')
+
+            for tracks in (self.tracks, self.del_tracks):
+                for idx in range(len(tracks)):
+
+                    tra_len = np.count_nonzero(tracks[idx].coordinates > 0) / 2
+
+                    if (tracks[idx].g_truth_t == -1):
+                        tracks[idx].g_truth[:] = -1
+                        f_g_truth.write(str(tracks[idx].track_id) + " " + str(-1) + " " + str(tra_len) + "\n")
+                    elif (-1 < tracks[idx].g_truth_t < self.image_amount):
+                        tracks[idx].g_truth[:tracks[idx].g_truth_t] = 1
+                        tracks[idx].g_truth[tracks[idx].g_truth_t:] = -1
+                        f_g_truth.write(str(tracks[idx].track_id) + " " + str(tracks[idx].g_truth_t) + " " + str(
+                            tra_len) + "\n")
+                    else:
+                        f_g_truth.write(str(tracks[idx].track_id) + " " + str(1000) + " " + str(tra_len) + "\n")
+                        tracks[idx].g_truth[:] = 1
+
+                    flag = 0
+                    for i in range(self.image_amount - 1, -1, -1):
+                        if (tracks[idx].live_state[i] > 1):
+                            flag = 1
+                            break
+
+                    if flag:
+                        if (i == self.image_amount - 1):
+                            f_die_time.write(str(tracks[idx].track_id) + " " + str(1000) + "\n")
+                            # f_die_time.write(str(tracks[idx].track_id) + " " + str(self.image_amount) + "\n")
+                            # f_die_time.write(str(tracks[idx].track_id) + " " + str(self.image_amount) + "\n")
+                        else:
+                            f_die_time.write(str(tracks[idx].track_id) + " " + str(i + 1) + "\n")
+                    else:
+                        f_die_time.write(str(tracks[idx].track_id) + " " + str(-1) + "\n")
+                        # f_die_time.write(str(tracks[idx].track_id) + " " + str(0) + "\n")
+
+            f_g_truth.close()
+            f_die_time.close()
+
+        f_cell_tracks = open(outpath + "Cell_tracks/Beacon_" + str(Beacon) + "_cell_tracks.txt", 'w')
+        f_cell_tracks.write("track_id,x,y,area,core_brightness_average,eccentricity\n")
+        for tracks in (self.tracks, self.del_tracks):
+            for idx in range(len(tracks)):
+                # print("track_id:", tracks[idx].track_id, sep='', file=f_cell_tracks)
+
+                tra_one = np.zeros((self.image_amount, 6))
+                tra_one[:, 0] = tracks[idx].track_id
+                for i in range(self.image_amount):
+                    if (tracks[idx].full_trace[i] != None):
+                        tra_one[i, 1:] = tracks[idx].full_trace[i][[0, 1, 3, 10, 11]]
+                        # print("%d,%.2f,%.2f,%.2f,%.2f,%.2f" % tuple([tracks[idx].track_id] + tracks[idx].full_trace[i][[0, 1, 3, 10, 11]].tolist()), sep=',', file=f_cell_tracks)
+                    # else:
+                    #     print(tracks[idx].track_id, np.nan, np.nan, np.nan, np.nan, np.nan, sep=',', file=f_cell_tracks)
+
+
+                for i in range(5):
+                    y = tra_one[:, i + 1]
+                    sub_y_idx = np.where(y > 0)[0]
+                    y_p = y[sub_y_idx]
+                    x = np.arange(sub_y_idx[0], sub_y_idx[-1] + 1, 1)
+                    part_new_y = np.interp(x, sub_y_idx, y_p)
+                    new_y = y.copy()
+                    new_y[:] = 0
+                    new_y[sub_y_idx[0]:sub_y_idx[-1] + 1] = part_new_y
+                    # print("qibing:", tracks[idx].track_id, i, tra_one[:, i + 1], new_y)
+                    tra_one[:, i + 1] = new_y
+                    pass
+
+                [print(*e, sep=',', file=f_cell_tracks) for e in tra_one]
+
+        f_cell_tracks.close()
+
+
     def mark_gt(self, frame, frame_index, scale, gt_frame, crop_height, crop_width, out_path, Beacon, add_imageJ, get_cells, f_det_txt):
         # get_cells = True
         # get_cells = True

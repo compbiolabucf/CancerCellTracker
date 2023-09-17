@@ -93,8 +93,9 @@ def main(configure_path = "./configure.txt", path = "Work/ground_truth/preproces
 
     os.makedirs(out_path, exist_ok = True)
 
-    for new_folder in ["images_ucf/Beacon_" + str(Beacon) + "/", "videos_ucf/", "Results_ucf/", "info_ucf/"]:
+    for new_folder in ["images_ucf/Beacon_" + str(Beacon) + "/", "videos_ucf/", "Results_ucf/", "info_ucf/", "Cell_tracks/", "Results/"]:
         os.makedirs(out_path + new_folder, exist_ok = True)
+
 
     process_one_video_main(path, Beacon, 1, None, out_path, paras_dict)
 
@@ -228,7 +229,11 @@ def process_one_video_main(path, Beacon, data_type, pt, out_path, paras_dict):
     gt_video_path = ""
     gt_video_path = re.sub(r'RawData.*', 'TimeLapseVideos/', path) + "Beacon-" + str(Beacon) + "processed.avi"
     # gt_video_path = home_dir + "Work/ground_truth/RFP.mp4"
-    classifier.analyse_classification_7(out_path, detector.image_amount, gt_video_path, scale, Beacon)
+    # classifier.analyse_classification_7(out_path, detector.image_amount, gt_video_path, scale, Beacon)
+
+    gt = False
+    classifier.analyse_classification_8_win(out_path, detector.image_amount, gt_video_path, scale, Beacon, gt)
+    
     mark_ground_truth(classifier, out_path + "images_ucf/Beacon_" + str(Beacon) + "/", Beacon, data_type, 8, detector.image_amount, out_path, gt_video_path)
 
     # mark(classifier, path, Beacon, data_type, scale)
